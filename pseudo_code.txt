@@ -1,0 +1,41 @@
+neural network which takes in state and outputs the value over all actions.
+
+we epsilon greedy choose next actions
+
+target is the immediate reward plus discount * max over actions 
+
+for i in range(number of episodes):
+    
+    get initial state from resetting environment
+
+    choose action from epsilon greedy
+    take action and observe next state as well as reward
+
+    store (initial state, action, reward, next state) in replay debuff
+
+    if (size(replay_debuff)>batch_size):
+        sample batch_size from replay_debuff to get (state, action, reward, next_state)
+        calculate target: reward + discount_factor(max(action_values in next_state))
+        loss function = (target - action_value in old_state)^^2
+        update gradients based on loss function
+
+    initial_state = next_state
+    
+    while not DONE:
+
+        choose action from epsilon greedy    
+        take action and observe next state as well as reward
+        store (initial state, action, reward, next state) in replay debuff
+
+
+
+    [[state, action, reward, next_state]]
+    
+
+To DO:
+1. implement a epsilon scheduler
+2. implement a reference network
+    
+
+
+    
