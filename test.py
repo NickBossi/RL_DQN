@@ -1,5 +1,27 @@
 import random
 import torch
+import gymnasium as gym
+import time
+import matplotlib.pyplot as plt
+
+env = gym.make("CartPole-v1", render_mode = "human")
+
+AB = ["A","B"]
+now = list(set(AB) - set(["A"]))
+
+print(random.choice(["A","B"]))
+print(now)
+
+
+env.reset()
+for i in range(100000):
+    env.render()
+    action = env.action_space.sample()
+    print(action)
+
+
+    env.step(action)
+
 '''
 import gymnasium as gym
 

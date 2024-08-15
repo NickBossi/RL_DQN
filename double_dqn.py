@@ -56,11 +56,17 @@ class Agent:
         self.device = device
         self.num_actions = num_actions
         self.buffer = ReplayBuffer(batch_size=batch_size, max_size = max_size)
-        self.q_network = QNetwork(env = environment).to(device)
-        self.target_network = copy.deepcopy(self.q_network).to(device)
+
+        self.q_network_A = QNetwork(env = environment).to(device)
+        self.q_network_B = copy.deepcopy(self.q_network_A).to(device)
+        self.target_network = self.q_network_A
+        self.q_network = self.q_network_B
+
         self.eps_min = eps_min
         self.eps_decay = eps_decay
         self.eps = 1.0
+        self.target_weigting = 0.01
+        self.choice = ""
 
         self.training_steps = 0
 
@@ -70,10 +76,22 @@ class Agent:
         if random.random() < self.eps:
             action = self.environment.action_space.sample()
         else:
+            self.choice = random.choice(["A","B"])
+
             observation = torch.tensor(observation).to(self.device)
+
+            if self.choice == "A":
+                self.target_network = self.q_network_A
+                self.q_network = self.q_network_B
+
+            else:
+                self.target_network = self.q_network_B
+                self.q_network = self.q_network_A
+
             q_values = self.q_network(observation)
             action = torch.argmax(q_values)
             action = action.item()
+
 
         return action
     
@@ -86,23 +104,40 @@ class Agent:
         dones = torch.tensor(batch[3]).to(self.device)
         next_observations = torch.tensor(np.array(batch[4])).to(device)
 
+
+        # Only change between this and normal DQN. We choose action based on target network, but use value of Q network
         with torch.no_grad():
             next_q_values = self.target_network(next_observations)
             target_values = torch.max(next_q_values, dim = -1)[0]
-
-        targets = rewards + 0.99 * (1-dones.to(torch.int)) * target_values
+            targets = rewards + 0.99 * (1-dones.to(torch.int)) * target_values
 
         q_values = self.q_network(observations)
+
         action_values = torch.gather(input = q_values, dim = 1, index = actions.unsqueeze(1))
-        td_error = (targets - action_values)**2
-        #loss = torch.mean(td_error)
-        loss = F.mse_loss(action_values, targets.unsqueeze(1))
+
+        loss = F.mse_loss(action_values, targets)
         self.q_network.optimizer.zero_grad()
         loss.backward()
         self.q_network.optimizer.step()
 
         if self.training_steps % 25 == 0:
-            self.target_network.load_state_dict(self.q_network.state_dict())
+
+            self.target_network = random.choice(["A","B"])
+
+            if self.choice == "A":
+                self.target_network = self.q_network_A
+                self.q_network = self.q_network_B
+
+            else:
+                self.target_network = self.q_network_B
+                self.q_network = self.q_network_A     
+
+
+            for target_param, param in zip(self.target_network.parameters(), self.q_network.parameters()):
+                target_param.data.copy_(
+                    self.target_weigting*param.data + (1-self.target_weigting)*target_param.data
+                    )
+
 
         self.training_steps +=1
 
